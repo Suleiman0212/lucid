@@ -1,0 +1,3 @@
+stack input: text
+in -> input
+out <- input
