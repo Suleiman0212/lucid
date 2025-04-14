@@ -9,7 +9,6 @@ pub struct Lexer {
 #[derive(Debug)]
 pub enum Token {
     Stack,
-    Heap,
     Out,
     In,
     Type(String),
@@ -18,7 +17,12 @@ pub enum Token {
     Identifier(String),
     Colon,
     Assign,
-    Get,
+    Add,
+    Sub,
+    Mul,
+    Del,
+    IntoStream,
+    FromStream,
     Unknown(char),
 }
 
@@ -87,7 +91,6 @@ impl Lexer {
 
         match identifier.as_str() {
             "stack" => Token::Stack,
-            "heap" => Token::Heap,
             "out" => Token::Out,
             "in" => Token::In,
             "text" | "num" => Token::Type(identifier),
@@ -102,12 +105,16 @@ impl Lexer {
                 ':' => Token::Colon,
                 '<' if self.clone().peek_char() == Some('-') => {
                     self.next_char();
-                    Token::Assign
+                    Token::IntoStream
                 }
                 '-' if self.clone().peek_char() == Some('>') => {
                     self.next_char();
-                    Token::Get
+                    Token::FromStream
                 }
+                '+' => Token::Add,
+                '-' => Token::Sub,
+                '*' => Token::Mul,
+                '/' => Token::Del,
                 '"' => self.lex_string(),
                 _ if ch.is_alphabetic() => self.lex_identifier(ch),
                 _ if ch.is_digit(10) => self.lex_number(ch),
