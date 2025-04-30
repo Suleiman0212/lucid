@@ -1,0 +1,8 @@
+out <- "Enter your name: "
+in -> name
+out <- "Enter your age: "
+in -> age
+out <- "Enter yout sex: "
+in -> sex
+
+out <- "You: " + name + ", " + age + "yo " + sex

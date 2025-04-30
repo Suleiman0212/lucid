@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-use core::panic;
 use crate::lexer::Token;
+use core::panic;
 
 #[derive(Debug)]
 pub enum Expr {
@@ -27,6 +27,49 @@ fn parse_literal(token: &Token) -> Option<Expr> {
         Token::NumberLiteral(n) => Some(Expr::NumberLiteral(*n)),
         _ => None,
     }
+}
+
+fn parse_addition_expr(tokens: &[Token], i: &mut usize) -> Option<Expr> {
+    let mut left = parse_basic_expr(tokens, i)?;
+
+    while *i < tokens.len() {
+        if let Token::Add = tokens[*i] {
+            *i += 1;
+            let right = parse_basic_expr(tokens, i)?;
+            left = Expr::Addition {
+                left: Box::new(left),
+                right: Box::new(right),
+            };
+        } else {
+            break;
+        }
+    }
+
+    Some(left)
+}
+
+fn parse_basic_expr(tokens: &[Token], i: &mut usize) -> Option<Expr> {
+    if *i >= tokens.len() {
+        return None;
+    }
+
+    let expr = match &tokens[*i] {
+        Token::Identifier(name) => {
+            *i += 1;
+            Expr::Identifier(name.clone())
+        }
+        Token::StringLiteral(val) => {
+            *i += 1;
+            Expr::StringLiteral(val.clone())
+        }
+        Token::NumberLiteral(n) => {
+            *i += 1;
+            Expr::NumberLiteral(*n)
+        }
+        _ => return None,
+    };
+
+    Some(expr)
 }
 
 fn parse_stack_decl(tokens: &[Token], i: &mut usize) -> Option<Expr> {
@@ -99,32 +142,41 @@ fn parse_output(tokens: &[Token], i: &mut usize) -> Option<Expr> {
         return None;
     }
 
-    let left = match &tokens[*i + 2] {
+    *i += 2;
+
+    let mut expr = match tokens.get(*i)? {
         Token::Identifier(name) => Expr::Identifier(name.clone()),
         Token::StringLiteral(val) => Expr::StringLiteral(val.clone()),
         Token::NumberLiteral(val) => Expr::NumberLiteral(*val),
         _ => panic!("Invalid value after out <-"),
     };
 
-    // Проверка сложения: `out <- a + b`
-    if *i + 4 < tokens.len() && matches!(tokens.get(*i + 3), Some(Token::Add)) {
-        let right = match &tokens[*i + 4] {
+    *i += 1;
+
+    // Пока есть `+`, продолжаем строить Expr::Addition
+    while *i < tokens.len() {
+        if !matches!(tokens.get(*i), Some(Token::Add)) {
+            break;
+        }
+
+        *i += 1;
+
+        let rhs = match tokens.get(*i)? {
             Token::Identifier(name) => Expr::Identifier(name.clone()),
             Token::StringLiteral(val) => Expr::StringLiteral(val.clone()),
             Token::NumberLiteral(val) => Expr::NumberLiteral(*val),
             _ => panic!("Invalid right-hand side in addition"),
         };
 
-        *i += 5;
-        return Some(Expr::Output(Box::new(Expr::Addition {
-            left: Box::new(left),
-            right: Box::new(right),
-        })));
+        *i += 1;
+
+        expr = Expr::Addition {
+            left: Box::new(expr),
+            right: Box::new(rhs),
+        };
     }
 
-    // Без сложения
-    *i += 3;
-    Some(Expr::Output(Box::new(left)))
+    Some(Expr::Output(Box::new(expr)))
 }
 
 fn parse_input(tokens: &[Token], i: &mut usize) -> Option<Expr> {
